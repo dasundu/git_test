@@ -30,9 +30,12 @@ cp api/.env.example api/.env        # set DATABASE_URL, JWT_SECRET
 cp web/.env.example web/.env.local
 npm run db:migrate                  # create tables
 npm run db:seed                     # 26 categories, brands, admin user
+npm run db:seed:demo                # optional: mock dealers, sellers, buyers, 23 listings, chats & offers
 npm run dev:api                     # http://localhost:4000
 npm run dev:web                     # http://localhost:3000
 ```
+
+Demo accounts (after `db:seed:demo`) all use password `Demo1234!` — e.g. `subic.dealer@demo.truckmarket.ph`, `bea.buyer@demo.truckmarket.ph`, `juan.seller@demo.truckmarket.ph`. Run the demo seed on the machine that runs the API: it generates the placeholder photos into `api/uploads`.
 
 Seeded admin: `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `api/.env` (**change the password**).
 

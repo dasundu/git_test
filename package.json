@@ -2,12 +2,16 @@
   "name": "truck-marketplace",
   "private": true,
   "version": "0.1.0",
-  "workspaces": ["api", "web"],
+  "workspaces": [
+    "api",
+    "web"
+  ],
   "scripts": {
     "dev:api": "npm run dev -w api",
     "dev:web": "npm run dev -w web",
     "build": "npm run build -w api && npm run build -w web",
     "db:migrate": "npm run db:migrate -w api",
-    "db:seed": "npm run db:seed -w api"
+    "db:seed": "npm run db:seed -w api",
+    "db:seed:demo": "npm run db:seed:demo -w api"
   }
 }
