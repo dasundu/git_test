@@ -1,0 +1,288 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  BUYER
+  SELLER
+  DEALER
+  ADMIN
+}
+
+enum ListingStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+}
+
+enum ModerationStatus {
+  ACTIVE
+  HIDDEN
+  REMOVED
+}
+
+enum Condition {
+  USED
+  JAPAN_SURPLUS
+  REPAIRED
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COUNTERED
+  WITHDRAWN
+}
+
+enum MessageType {
+  TEXT
+  OFFER
+  SYSTEM
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  name           String
+  phone          String?
+  messengerUrl   String?
+  role           Role     @default(BUYER)
+  suspended      Boolean  @default(false)
+  emailNotify    Boolean  @default(true)
+  freeListingsUsed Int    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  dealership     Dealership?
+  listings       Listing[]
+  favorites      Favorite[]
+  buyerConvos    Conversation[] @relation("BuyerConvos")
+  sellerConvos   Conversation[] @relation("SellerConvos")
+  messages       Message[]
+  notifications  Notification[]
+  pushSubs       PushSubscription[]
+  reports        Report[]
+  offersMade     Offer[]  @relation("OfferBuyer")
+  offersReceived Offer[]  @relation("OfferSeller")
+}
+
+model Dealership {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  slug            String   @unique
+  description     String?
+  logoUrl         String?
+  coverUrl        String?
+  address         String?
+  city            String?
+  province        String?
+  latitude        Float?
+  longitude       Float?
+  phone           String?
+  messengerUrl    String?
+  facebookUrl     String?
+  websiteUrl      String?
+  yearsInBusiness Int?
+  verified        Boolean  @default(false)
+  verifiedAt      DateTime?
+  featured        Boolean  @default(false)
+  featuredUntil   DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  listings        Listing[]
+}
+
+model Category {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  name       String
+  sortOrder  Int      @default(0)
+  specSchema Json     @default("[]")
+  listings   Listing[]
+}
+
+model Brand {
+  id       String   @id @default(cuid())
+  slug     String   @unique
+  name     String
+  logoUrl  String?
+  listings Listing[]
+}
+
+model Listing {
+  id            String   @id @default(cuid())
+  sellerId      String
+  seller        User     @relation(fields: [sellerId], references: [id])
+  dealershipId  String?
+  dealership    Dealership? @relation(fields: [dealershipId], references: [id])
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id])
+  brandId       String?
+  brand         Brand?   @relation(fields: [brandId], references: [id])
+
+  title         String
+  description   String
+  price         Int
+  negotiable    Boolean  @default(true)
+  year          Int?
+  mileageKm     Int?
+  condition     Condition @default(USED)
+  province      String?
+  city          String?
+  specs         Json     @default("{}")
+
+  status        ListingStatus    @default(AVAILABLE)
+  availabilityConfirmedAt DateTime @default(now())
+  moderation    ModerationStatus @default(ACTIVE)
+  views         Int      @default(0)
+  featured      Boolean  @default(false)
+  featuredUntil DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  images        ListingImage[]
+  favorites     Favorite[]
+  conversations Conversation[]
+  offers        Offer[]
+  reports       Report[]
+
+  @@index([categoryId, moderation, status])
+  @@index([brandId])
+  @@index([price])
+  @@index([createdAt])
+  @@index([province, city])
+}
+
+model ListingImage {
+  id        String  @id @default(cuid())
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  url       String
+  sortOrder Int     @default(0)
+}
+
+model Favorite {
+  userId    String
+  listingId String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, listingId])
+}
+
+model Conversation {
+  id            String   @id @default(cuid())
+  listingId     String
+  listing       Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyerId       String
+  buyer         User     @relation("BuyerConvos", fields: [buyerId], references: [id])
+  sellerId      String
+  seller        User     @relation("SellerConvos", fields: [sellerId], references: [id])
+  lastMessageAt DateTime @default(now())
+  buyerReadAt   DateTime @default(now())
+  sellerReadAt  DateTime @default(now())
+  availabilityAskedAt DateTime?
+  createdAt     DateTime @default(now())
+
+  messages      Message[]
+  offers        Offer[]
+
+  @@unique([listingId, buyerId])
+  @@index([buyerId])
+  @@index([sellerId])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User     @relation(fields: [senderId], references: [id])
+  type           MessageType @default(TEXT)
+  body           String
+  offerId        String?
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model Offer {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  listingId      String
+  listing        Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyerId        String
+  buyer          User     @relation("OfferBuyer", fields: [buyerId], references: [id])
+  sellerId       String
+  seller         User     @relation("OfferSeller", fields: [sellerId], references: [id])
+  amount         Int
+  note           String?
+  status         OfferStatus @default(PENDING)
+  // who made this offer: the buyer (initial/re-offer) or the seller (counter)
+  fromSeller     Boolean  @default(false)
+  parentOfferId  String?
+  createdAt      DateTime @default(now())
+  respondedAt    DateTime?
+
+  @@index([listingId])
+  @@index([conversationId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  listingId  String
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  reporterId String
+  reporter   User     @relation(fields: [reporterId], references: [id])
+  reason     String
+  details    String?
+  status     ReportStatus @default(OPEN)
+  createdAt  DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String
+}
