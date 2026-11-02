@@ -77,12 +77,15 @@ describe("marketplace flow", () => {
   it("detail counts views, favorites work", async () => {
     const d = await request(app).get(`/listings/${listingId}`);
     expect(d.status).toBe(200);
+    await request(app).post(`/listings/${listingId}/view`);
+    await buyer.post(`/listings/${listingId}/view`);
+    await dealer.post(`/listings/${listingId}/view`); // owner views are not counted
     expect(d.body.seller.email).toBeUndefined();
     expect((await buyer.post(`/favorites/${listingId}`)).status).toBe(201);
     expect((await buyer.get("/favorites")).body).toHaveLength(1);
     expect((await buyer.get(`/listings/${listingId}`)).body.favorited).toBe(true);
     const mine = await dealer.get("/listings/mine");
-    expect(mine.body[0].views).toBeGreaterThanOrEqual(2);
+    expect(mine.body[0].views).toBe(2);
   });
 
   it("chat + availability request + notification", async () => {

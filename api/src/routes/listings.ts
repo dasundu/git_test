@@ -132,11 +132,22 @@ listingsRouter.get(
     const l = await prisma.listing.findUnique({ where: { id: req.params.id }, include: listingInclude });
     const isOwner = l && req.user && (l.sellerId === req.user.id || req.user.role === "ADMIN");
     if (!l || (l.moderation !== "ACTIVE" && !isOwner)) throw new HttpError(404, "Listing not found");
-    if (!isOwner) await prisma.listing.update({ where: { id: l.id }, data: { views: { increment: 1 } } });
     const favorited = req.user
       ? !!(await prisma.favorite.findUnique({ where: { userId_listingId: { userId: req.user.id, listingId: l.id } } }))
       : false;
-    res.json(toListingDto(l, { favorited, views: l.views + (isOwner ? 0 : 1) }));
+    res.json(toListingDto(l, { favorited }));
+  })
+);
+
+// Called once per page visit by the browser (not by server-side rendering or the owner).
+listingsRouter.post(
+  "/:id/view",
+  wrap(async (req, res) => {
+    await prisma.listing.updateMany({
+      where: { id: req.params.id, moderation: "ACTIVE", ...(req.user ? { sellerId: { not: req.user.id } } : {}) },
+      data: { views: { increment: 1 } },
+    });
+    res.json({ ok: true });
   })
 );
 
