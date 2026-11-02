@@ -41,9 +41,17 @@ Seeded admin: `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `api/.env` (**change the pas
 cd api && npm test      # integration tests against a separate DB (TEST_DATABASE_URL, default: truckmarket_test)
 ```
 
+## Using Neon (hosted Postgres)
+1. Create a Neon project and copy two connection strings from the dashboard (toggle "Connection pooling" on/off):
+   - **Pooled** (host contains `-pooler`) → `DATABASE_URL`
+   - **Direct** → `DIRECT_URL`
+   Both need `?sslmode=require`.
+2. Put them in `api/.env`, then run `npm run db:deploy -w api` (applies migrations) and `npm run db:seed`.
+3. Use a separate Neon branch/database for `TEST_DATABASE_URL` — never point tests at real data.
+
 ## Configuration
 `api/.env`
-- `DATABASE_URL`, `JWT_SECRET` (required in production), `WEB_URL`, `API_URL` (public URL of the API; used in image URLs)
+- `DATABASE_URL`, `DIRECT_URL` (migrations), `JWT_SECRET` (required in production), `WEB_URL`, `API_URL` (public URL of the API; used in image URLs)
 - `SMTP_*`, `MAIL_FROM` — email notifications (logged to console if unset)
 - `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` — browser push (`npx web-push generate-vapid-keys`)
 
